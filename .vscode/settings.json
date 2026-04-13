@@ -127,6 +127,7 @@
 			"bashisms",
 			"vgchange",
 			"mountpoint",
+			"ARCH_OK",
 			"coreutils",
 			"e2fsprogs",
 			"subshell",
