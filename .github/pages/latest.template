@@ -11,7 +11,7 @@ CACHE="/run/auto-chroot"
 SCRIPT="$CACHE/auto-chroot.sh"
 HASH="$CACHE/auto-chroot.sh.sha256"
 BASE="https://github.com/williamcanin/auto-chroot/releases/download/v$VERSION"
-URL="$BASE/init.sh"
+URL="$BASE/auto-chroot.sh"
 HASH_URL="$BASE/auto-chroot.sh.sha256"
 
 
