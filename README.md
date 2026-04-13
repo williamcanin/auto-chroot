@@ -1,4 +1,4 @@
-# auto-chroot (Arch Linux Rescue Tool)
+# smart-chroot (Arch Linux Rescue Tool)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Shell](https://img.shields.io/badge/shell-POSIX%20sh-green.svg)](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/sh.html)
@@ -12,7 +12,7 @@ It is designed for use in Arch Linux live environments (archiso), system recover
 
 ## CI Status
 
-[![Auto-chroot real environment tests](https://github.com/williamcanin/auto-chroot/actions/workflows/ci.yml/badge.svg)](https://github.com/williamcanin/auto-chroot/actions/workflows/ci.yml) [![Auto Release (auto-chroot)](https://github.com/williamcanin/auto-chroot/actions/workflows/release.yml/badge.svg)](https://github.com/williamcanin/auto-chroot/actions/workflows/release.yml)
+[![Auto-chroot real environment tests](https://github.com/williamcanin/smart-chroot/actions/workflows/ci.yml/badge.svg)](https://github.com/williamcanin/smart-chroot/actions/workflows/ci.yml) [![Auto Release (smart-chroot)](https://github.com/williamcanin/smart-chroot/actions/workflows/release.yml/badge.svg)](https://github.com/williamcanin/smart-chroot/actions/workflows/release.yml)
 
 ## Features
 
@@ -46,15 +46,15 @@ These are already available in official Arch Linux ISO.
 Boot into an Arch Linux live environment and run:
 
 ```sh
-sh <(curl -fsSL https://williamcanin.github.io/auto-chroot/latest)
+sh <(curl -fsSL https://williamcanin.github.io/smart-chroot/latest)
 ```
 
 Alternatively:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/williamcanin/auto-chroot/main/init.sh -o auto-chroot.sh
-chmod +x auto-chroot.sh
-sh auto-chroot.sh
+curl -fsSL https://raw.githubusercontent.com/williamcanin/smart-chroot/main/init.sh -o smart-chroot.sh
+chmod +x smart-chroot.sh
+sh smart-chroot.sh
 ```
 
 ---

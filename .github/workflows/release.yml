@@ -1,4 +1,4 @@
-name: Auto Release (auto-chroot)
+name: Auto Release (smart-chroot)
 
 on:
   push:
@@ -32,8 +32,8 @@ jobs:
 
       - name: Prepare release files
         run: |
-          cp init.sh auto-chroot.sh
-          sha256sum auto-chroot.sh > auto-chroot.sh.sha256
+          cp init.sh smart-chroot.sh
+          sha256sum smart-chroot.sh > smart-chroot.sh.sha256
 
       - name: Generate CHANGELOG
         run: |
@@ -51,8 +51,8 @@ jobs:
           tag_name: v${{ env.VERSION }}
           body_path: CHANGELOG.md
           files: |
-            auto-chroot.sh
-            auto-chroot.sh.sha256
+            smart-chroot.sh
+            smart-chroot.sh.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

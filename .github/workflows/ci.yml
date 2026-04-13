@@ -63,7 +63,7 @@ jobs:
 
           sudo cryptsetup luksFormat --batch-mode --key-file /dev/urandom ${LOOP}p2 || true
 
-      - name: Run auto-chroot script (safe execution)
+      - name: Run smart-chroot script (safe execution)
         run: |
           chmod +x init.sh
 

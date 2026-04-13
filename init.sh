@@ -8,7 +8,7 @@ VERSION="0.1.5"
 MNT="/mnt"
 PROBE="/mnt/.probe"
 
-echo "auto-chroot - v$VERSION"
+echo "smart-chroot - v$VERSION"
 
 ARCH="$(uname -m)"
 
