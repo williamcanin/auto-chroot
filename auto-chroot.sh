@@ -4,7 +4,7 @@
 # POSIX compliant, no bashisms
 # by: William C. Canin <https://williamcanin.github.io>
 
-VERSION="0.1.1"
+VERSION="0.1.2"
 MNT="/mnt"
 PROBE="/mnt/.probe"
 
