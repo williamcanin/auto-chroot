@@ -12,7 +12,7 @@ It is designed for use in Arch Linux live environments (archiso), system recover
 
 ## CI Status
 
-[![Auto Tests](https://img.shields.io/github/actions/workflow/status/williamcanin/chroot-auto/test.yml?branch=main)](https://github.com/williamcanin/chroot-auto/actions)
+[![Auto Tests](https://img.shields.io/github/actions/workflow/status/williamcanin/auto-chroot/test.yml?branch=main)](https://github.com/williamcanin/auto-chroot/actions)
 
 ## Features
 
@@ -46,15 +46,15 @@ These are already available in official Arch Linux ISO.
 Boot into an Arch Linux live environment and run:
 
 ```sh
-sh <(curl -fsSL https://raw.githubusercontent.com/williamcanin/chroot-auto/main/chroot-auto.sh)
+sh <(curl -fsSL https://raw.githubusercontent.com/williamcanin/auto-chroot/main/auto-chroot.sh)
 ```
 
 Alternatively:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/williamcanin/chroot-auto/main/chroot-auto.sh -o chroot-auto.sh
-chmod +x chroot-auto.sh
-sh chroot-auto.sh
+curl -fsSL https://raw.githubusercontent.com/williamcanin/auto-chroot/main/auto-chroot.sh -o auto-chroot.sh
+chmod +x auto-chroot.sh
+sh auto-chroot.sh
 ```
 
 ---
