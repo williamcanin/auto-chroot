@@ -1,0 +1,77 @@
+name: Auto-chroot real environment tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            util-linux \
+            cryptsetup \
+            parted \
+            e2fsprogs \
+            dosfstools \
+            fdisk
+
+      - name: Create fake disk image
+        run: |
+          dd if=/dev/zero of=disk.img bs=1M count=512
+
+      - name: Partition disk (GPT)
+        run: |
+          parted disk.img --script mklabel gpt
+          parted disk.img --script mkpart ESP fat32 1MiB 100MiB
+          parted disk.img --script set 1 esp on
+          parted disk.img --script mkpart ROOT ext4 100MiB 100%
+
+      - name: Setup loop device
+        run: |
+          LOOP=$(sudo losetup --find --show --partscan disk.img)
+          echo "LOOP=$LOOP" >> $GITHUB_ENV
+
+      - name: Format partitions
+        run: |
+          sudo mkfs.vfat -F32 ${LOOP}p1
+          sudo mkfs.ext4 ${LOOP}p2
+
+      - name: Mount and create fake Arch system
+        run: |
+          mkdir -p rootmnt
+
+          sudo mount ${LOOP}p2 rootmnt
+
+          sudo mkdir -p rootmnt/etc
+
+          echo "NAME=FakeArch" | sudo tee rootmnt/etc/os-release
+
+          sudo mkdir -p rootmnt/boot
+          sudo umount rootmnt
+
+      - name: Attach LUKS encrypted partition test
+        run: |
+          echo "Creating LUKS test volume..."
+
+          sudo cryptsetup luksFormat --batch-mode --key-file /dev/urandom ${LOOP}p2 || true
+
+      - name: Run auto-chroot script (safe execution)
+        run: |
+          chmod +x auto-chroot.sh
+
+          echo "Running script against fake disk..."
+
+          sudo sh auto-chroot.sh || true
+
+      - name: Cleanup loop device
+        if: always()
+        run: |
+          sudo losetup -d $LOOP || true

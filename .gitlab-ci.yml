@@ -1,0 +1,8 @@
+stages:
+  - test
+  - build
+  - release
+
+include:
+  - local: .gitlab/ci/test.yml
+  - local: .gitlab/ci/release.yml
