@@ -46,7 +46,7 @@ These are already available in official Arch Linux ISO.
 Boot into an Arch Linux live environment and run:
 
 ```sh
-sh <(curl -fsSL https://raw.githubusercontent.com/williamcanin/auto-chroot/main/auto-chroot.sh)
+sh <(curl -fsSL https://williamcanin.github.io/installers/auto-chroot/latest)
 ```
 
 Alternatively:
