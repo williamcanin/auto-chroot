@@ -114,7 +114,8 @@
     "**/*.bak": true,
     },
     "cSpell.words": [
-			"Canin",
+			"canin",
+			"williamcanin",
 			"LUKS",
 			"cryptsetup",
 			"rpno",
