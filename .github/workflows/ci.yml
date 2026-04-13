@@ -65,11 +65,11 @@ jobs:
 
       - name: Run auto-chroot script (safe execution)
         run: |
-          chmod +x auto-chroot.sh
+          chmod +x init.sh
 
           echo "Running script against fake disk..."
 
-          sudo sh auto-chroot.sh || true
+          sudo sh init.sh || true
 
       - name: Cleanup loop device
         if: always()
