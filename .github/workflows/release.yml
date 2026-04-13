@@ -2,122 +2,73 @@ name: Auto Release (auto-chroot)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get version from script
-        id: version
+      - name: Get version
         run: |
-          VERSION=$(grep 'VERSION=' init.sh | head -n1 | cut -d'"' -f2)
+          VERSION=$(grep 'VERSION=' init.sh | cut -d'"' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Check if tag exists
-        id: tagcheck
+      - name: Create tag if missing
         run: |
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
+          if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git tag "v$VERSION"
+            git push origin "v$VERSION"
           fi
 
-      - name: Create tag if not exists
-        if: steps.tagcheck.outputs.exists == 'false'
+      - name: Prepare release files
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          cp init.sh auto-chroot.sh
+          sha256sum auto-chroot.sh > auto-chroot.sh.sha256
 
-      # ----------------------------
-      # Generate SHA256
-      # ----------------------------
-      - name: Generate SHA256
-        run: |
-          sha256sum init.sh > auto-chroot.sh.sha256
-
-      # ----------------------------
-      # Generate CHANGELOG
-      # ----------------------------
       - name: Generate CHANGELOG
         run: |
           echo "# Changelog v$VERSION" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-
-          PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
-
-          if [ -z "$PREV_TAG" ]; then
+          PREV=$(git tag --sort=-v:refname | sed -n '2p')
+          if [ -z "$PREV" ]; then
             git log --pretty=format:"- %s" >> CHANGELOG.md
           else
-            git log "$PREV_TAG"..HEAD --pretty=format:"- %s" >> CHANGELOG.md
+            git log "$PREV"..HEAD --pretty=format:"- %s" >> CHANGELOG.md
           fi
 
-      # ----------------------------
-      # Prepare release files
-      # ----------------------------
-      - name: Prepare release files
-        run: |
-          mkdir -p dist
-          cp init.sh dist/auto-chroot.sh
-          cp auto-chroot.sh.sha256 dist/
-          cp LICENSE dist/
-          cp README.md dist/
-          cp CHANGELOG.md dist/
-
-          tar -czf auto-chroot-${{ env.VERSION }}.tar.gz -C dist .
-
-      # ----------------------------
-      # Create GitHub Release
-      # ----------------------------
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
-          name: auto-chroot v${{ env.VERSION }}
           body_path: CHANGELOG.md
           files: |
-            dist/auto-chroot.sh
-            dist/auto-chroot.sh.sha256
-            auto-chroot-${{ env.VERSION }}.tar.gz
-            CHANGELOG.md
+            auto-chroot.sh
+            auto-chroot.sh.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ----------------------------
-      # Prepare GitHub Pages files
-      # ----------------------------
-      - name: Prepare GitHub Pages files
+      - name: Build Pages from templates
         run: |
           mkdir -p pages/auto-chroot
-          export VERSION="${{ env.VERSION }}"
+          export VERSION=${{ env.VERSION }}
 
+          envsubst < .github/pages/index.html.template > pages/index.html
           envsubst < .github/pages/latest.template > pages/auto-chroot/latest
+
+          chmod +x pages/auto-chroot/latest
           cp pages/auto-chroot/latest pages/auto-chroot/v$VERSION
 
-      # ----------------------------
-      # Deploy GitHub Pages
-      # ----------------------------
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: pages
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: pages
