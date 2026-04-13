@@ -9,6 +9,20 @@ MNT="/mnt"
 PROBE="/mnt/.probe"
 
 echo "auto-chroot - v$VERSION"
+
+ARCH="$(uname -m)"
+
+case "$ARCH" in
+    x86_64)  ARCH_OK=1 ;;
+    aarch64) ARCH_OK=1 ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
+[ "$ARCH_OK" = 1 ] && echo "Architecture detected: $ARCH"
+
 echo "Step 1: Detecting and unlocking LUKS containers..."
 
 # Only check REAL block devices (no mapper, no loop)
