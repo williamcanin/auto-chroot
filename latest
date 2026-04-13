@@ -2,17 +2,17 @@
 set -e
 
 ## Sample modo - no detect SHA256
-# exec sh <(curl -fsSL https://raw.githubusercontent.com/williamcanin/auto-chroot/main/init.sh)
+# exec sh <(curl -fsSL https://raw.githubusercontent.com/williamcanin/smart-chroot/main/init.sh)
 
 ## Mode detect SHA256
 VERSION="0.1.5"
 
-CACHE="/run/auto-chroot"
-SCRIPT="$CACHE/auto-chroot.sh"
-HASH="$CACHE/auto-chroot.sh.sha256"
-BASE="https://github.com/williamcanin/auto-chroot/releases/download/v$VERSION"
-URL="$BASE/auto-chroot.sh"
-HASH_URL="$BASE/auto-chroot.sh.sha256"
+CACHE="/run/smart-chroot"
+SCRIPT="$CACHE/smart-chroot.sh"
+HASH="$CACHE/smart-chroot.sh.sha256"
+BASE="https://github.com/williamcanin/smart-chroot/releases/download/v$VERSION"
+URL="$BASE/smart-chroot.sh"
+HASH_URL="$BASE/smart-chroot.sh.sha256"
 
 
 mkdir -p "$CACHE"
@@ -22,7 +22,7 @@ online() {
 }
 
 download_and_verify() {
-  echo "Online mode: downloading auto-chroot..."
+  echo "Online mode: downloading smart-chroot..."
 
   TMP="$(mktemp)"
   TMP_HASH="$(mktemp)"
@@ -53,5 +53,5 @@ if [ ! -f "$SCRIPT" ]; then
   exit 1
 fi
 
-echo "Executing auto-chroot..."
+echo "Executing smart-chroot..."
 sh "$SCRIPT"
