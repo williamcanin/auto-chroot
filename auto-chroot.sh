@@ -4,185 +4,93 @@
 # POSIX compliant, no bashisms
 # by: William C. Canin <https://williamcanin.github.io>
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 MNT="/mnt"
 PROBE="/mnt/.probe"
 
-mkdir -p "$PROBE"
+echo "auto-chroot - v$VERSION"
+echo "Step 1: Detecting and unlocking LUKS containers..."
 
-cleanup() {
-    umount "$PROBE" 2>/dev/null
-}
-
-trap cleanup EXIT
-
-echo "[ auto-chroot - v$VERSION ]"
-echo "Scanning block devices..."
-
-# ----------------------------
-# Step 1: Unlock LUKS devices
-# ----------------------------
-
-lsblk -rpno NAME,TYPE | while read -r dev type; do
-    if [ "$type" != "part" ]; then
-        continue
-    fi
-
+# Only check REAL block devices (no mapper, no loop)
+lsblk -rpno NAME,TYPE | awk '$2=="part" || $2=="disk"{print $1}' | while read -r dev; do
     if cryptsetup isLuks "$dev" 2>/dev/null; then
-        name="crypt_$(basename "$dev")"
-
-        if [ ! -e "/dev/mapper/$name" ]; then
-            echo "LUKS detected: $dev"
-            cryptsetup open "$dev" "$name"
-        fi
+        name="luks_$(basename "$dev")"
+        echo "LUKS found on $dev"
+        cryptsetup open "$dev" "$name"
     fi
 done
 
-# ----------------------------
-# Step 2: Detect ROOT partitions
-# ----------------------------
+echo "Step 2: Activating LVM volumes..."
+vgchange -ay 2>/dev/null || true
 
-ROOTS=""
+echo "Step 3: Searching for ROOT filesystem..."
 
-for dev in $(lsblk -rpno NAME,TYPE | awk '$2=="part"{print $1}'); do
+ROOT=""
 
-    # skip LUKS raw devices (only mapped matter later)
-    case "$dev" in
-        /dev/mapper/*) continue ;;
-    esac
-
-    mount "$dev" "$PROBE" 2>/dev/null || continue
-
-    if [ -f "$PROBE/etc/os-release" ]; then
-        ROOTS="$ROOTS $dev"
-    fi
-
-    umount "$PROBE" 2>/dev/null
-done
-
-# normalize list
-set -- "$ROOTS"
-
-if [ $# -eq 0 ]; then
-    echo "No valid Linux root partition found."
-    exit 1
-fi
-
-# ----------------------------
-# Step 3: Handle multiple roots
-# ----------------------------
-
-if [ $# -gt 1 ]; then
-    echo "Multiple root partitions detected:"
-
-    i=1
-    for r in "$@"; do
-        echo "[$i] $r"
-        i=$((i + 1))
-    done
-
-    printf "Select root [1-%s]: " "$#"
-    read -r choice
-
-    i=1
-    for r in "$@"; do
-        if [ "$i" -eq "$choice" ]; then
-            ROOT="$r"
+for dev in $(lsblk -rpno NAME); do
+    if mount "$dev" "$PROBE" 2>/dev/null; then
+        if [ -f "$PROBE/etc/os-release" ]; then
+            ROOT="$dev"
+            umount "$PROBE"
             break
         fi
-        i=$((i + 1))
-    done
-else
-    ROOT="$1"
-fi
-
-echo "Root selected: $ROOT"
-
-# ----------------------------
-# Step 4: Mount ROOT safely
-# ----------------------------
-
-if ! mountpoint -q "$MNT"; then
-    mount "$ROOT" "$MNT"
-fi
-
-# ----------------------------
-# Step 5: Detect EFI / BOOT
-# ----------------------------
-
-EFI=""
-
-for dev in $(lsblk -rpno NAME,FSTYPE | awk '$2=="vfat"{print $1}'); do
-
-    mount "$dev" "$PROBE" 2>/dev/null || continue
-
-    if [ -d "$PROBE/EFI" ] || [ -d "$PROBE/boot/efi" ]; then
-        EFI="$dev"
+        umount "$PROBE"
     fi
-
-    umount "$PROBE" 2>/dev/null
-
-    [ -n "$EFI" ] && break
 done
 
-# ----------------------------
-# Step 6: Mount EFI
-# ----------------------------
+[ -z "$ROOT" ] && { echo "Root not found"; exit 1; }
+
+echo "ROOT: $ROOT"
+mount "$ROOT" "$MNT"
+
+echo "Step 4: Detecting EFI partition..."
+
+for dev in $(lsblk -rpno NAME,FSTYPE | awk '$2=="vfat"{print $1}'); do
+    if mount "$dev" "$PROBE" 2>/dev/null; then
+        if [ -d "$PROBE/EFI" ]; then
+            EFI="$dev"
+            umount "$PROBE"
+            break
+        fi
+        umount "$PROBE"
+    fi
+done
 
 if [ -n "$EFI" ]; then
-    echo "Mounting EFI: $EFI"
+    echo "EFI: $EFI"
     mkdir -p "$MNT/boot"
-
-    if ! mountpoint -q "$MNT/boot"; then
-        mount "$EFI" "$MNT/boot"
-    fi
+    mount "$EFI" "$MNT/boot"
 fi
 
-# ----------------------------
-# Step 7: Detect separate /home
-# ----------------------------
+echo "Step 5: Detecting separate /home..."
 
-HOME_DEV=""
+for dev in $(lsblk -rpno NAME); do
+    [ "$dev" = "$ROOT" ] && continue
 
-for dev in $(lsblk -rpno NAME,FSTYPE | awk '$2!="vfat" && $2!="crypto_LUKS"{print $1}'); do
-
-    mount "$dev" "$PROBE" 2>/dev/null || continue
-
-    if [ -d "$PROBE/home" ] && [ -f "$PROBE/etc/os-release" ]; then
-        if [ "$dev" != "$ROOT" ]; then
-            HOME_DEV="$dev"
+    if mount "$dev" "$PROBE" 2>/dev/null; then
+        if [ -d "$PROBE" ] && [ ! -f "$PROBE/etc/os-release" ]; then
+            if [ -d "$PROBE/lost+found" ]; then
+                HOME_DEV="$dev"
+                umount "$PROBE"
+                break
+            fi
         fi
+        umount "$PROBE"
     fi
-
-    umount "$PROBE" 2>/dev/null
-
-    [ -n "$HOME_DEV" ] && break
 done
 
 if [ -n "$HOME_DEV" ]; then
-    echo "Mounting separate /home: $HOME_DEV"
+    echo "HOME: $HOME_DEV"
     mkdir -p "$MNT/home"
-
-    if ! mountpoint -q "$MNT/home"; then
-        mount "$HOME_DEV" "$MNT/home"
-    fi
+    mount "$HOME_DEV" "$MNT/home"
 fi
 
-# ----------------------------
-# Step 8: System mounts
-# ----------------------------
-
-echo "Mounting system filesystems..."
+echo "Step 6: Mounting system filesystems..."
 
 mount -t proc proc "$MNT/proc"
 mount --rbind /dev "$MNT/dev"
 mount --rbind /sys "$MNT/sys"
 mount --rbind /run "$MNT/run"
 
-# ----------------------------
-# Step 9: Enter chroot
-# ----------------------------
-
-echo "Entering chroot environment..."
-
+echo "Entering chroot..."
 arch-chroot "$MNT"
