@@ -155,6 +155,9 @@
 			"subvolumes",
 			"softprops",
 			"tagcheck",
+			"mkinitcpio",
+			"rslave",
+			"resolv",
 			"archiso"
 		]
 }
