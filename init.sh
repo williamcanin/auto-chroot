@@ -8,7 +8,7 @@
 set -e
 
 # Current version
-VERSION="0.2.2"
+VERSION="0.2.3"
 
 # Output utilities
 # -----------------------------------------------------------------------------
@@ -273,6 +273,49 @@ flow_interactive() {
 }
 
 # -----------------------------------------------------------------------------
+# Mount system pseudo-filesystems required inside the chroot
+#
+# These are needed for full system functionality within the chroot:
+#   /proc  - kernel process and system info (required by ps, pacman, etc.)
+#   /dev   - device nodes (required by cryptsetup, grub-install, etc.)
+#   /sys   - kernel/hardware interface (required by mkinitcpio, grub, etc.)
+#   /run   - runtime data: sockets, PIDs (required by systemd, dbus, etc.)
+#
+# Note: arch-chroot already handles these mounts automatically.
+# They are kept here explicitly for safety and compatibility in case
+# this script is later adapted to use plain chroot instead.
+# -----------------------------------------------------------------------------
+mount_pseudo_fs() {
+  printf "\n=== Mounting system pseudo-filesystems ===\n"
+
+  mount --types proc /proc /mnt/proc
+  info "/proc mounted at /mnt/proc."
+
+  mount --rbind /dev /mnt/dev
+  mount --make-rslave /mnt/dev
+  info "/dev mounted at /mnt/dev."
+
+  mount --rbind /sys /mnt/sys
+  mount --make-rslave /mnt/sys
+  info "/sys mounted at /mnt/sys."
+
+  mount --rbind /run /mnt/run
+  mount --make-rslave /mnt/run
+  info "/run mounted at /mnt/run."
+
+  # Copy host DNS resolution into the chroot so network access works
+  # (e.g. pacman -Syu, curl, etc.)
+  if [ -f /etc/resolv.conf ]; then
+    cp /etc/resolv.conf /mnt/etc/resolv.conf
+    info "/etc/resolv.conf copied for DNS resolution inside chroot."
+  else
+    warn "/etc/resolv.conf not found on host — DNS may not work inside chroot."
+  fi
+
+  success "System pseudo-filesystems ready."
+}
+
+# -----------------------------------------------------------------------------
 # Enter the chroot environment
 # -----------------------------------------------------------------------------
 do_chroot() {
@@ -309,6 +352,7 @@ main() {
       ;;
   esac
 
+  mount_pseudo_fs
   do_chroot
 }
 
