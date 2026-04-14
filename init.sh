@@ -7,34 +7,27 @@
 
 set -e
 
-# Version current
-VERSION="0.2.1"
+# Current version
+VERSION="0.2.2"
 
-# Output colors and utilities
+# Output utilities
 # -----------------------------------------------------------------------------
-# RED='\033[0;31m'
-# GREEN='\033[0;32m'
-# YELLOW='\033[1;33m'
-# CYAN='\033[0;36m'
-# BOLD='\033[1m'
-# RESET='\033[0m'
-
-info() { printf "${CYAN}[INFO]${RESET}  %s\n" "$1"; }
-success() { printf "${GREEN}[OK]${RESET}    %s\n" "$1"; }
-warn() { printf "${YELLOW}[WARN]${RESET}  %s\n" "$1"; }
-error() { printf "${RED}[ERROR]${RESET}  %s\n" "$1" >&2; }
+info()    { printf "[INFO]  %s\n" "$1"; }
+success() { printf "[OK]    %s\n" "$1"; }
+warn()    { printf "[WARN]  %s\n" "$1"; }
+error()   { printf "[ERROR] %s\n" "$1" >&2; }
 die() {
   error "$1"
   exit 1
 }
 
 header() {
-  printf "\n%s%s" "$BOLD" "$CYAN"
+  printf "\n"
   printf "╔══════════════════════════════════════════════╗\n"
   printf "             smart-chroot v%s              \n" "$VERSION"
   printf "            Arch Linux chroot helper             \n"
   printf "╚══════════════════════════════════════════════╝\n"
-  printf "%s\n" "$RESET"
+  printf "\n"
 }
 
 # Initial checks
@@ -54,7 +47,7 @@ check_dependencies() {
 }
 
 # -----------------------------------------------------------------------------
-# INI parser — pure shell using grep and sed, no external dependencies
+# INI parser — pure shell using awk, no external dependencies
 #
 # Usage: ini_get <file_content> <section> <key>
 #
@@ -119,7 +112,7 @@ mount_partition() {
   _luks_name="$5"
   _luks_device="$6"
 
-  printf "\n${BOLD}>> Mounting partition: %s${RESET}\n" "$_label"
+  printf "\n>> Mounting partition: %s\n" "$_label"
 
   if [ "$_luks" = "true" ]; then
     info "Partition '$_label' is LUKS-encrypted."
@@ -184,7 +177,7 @@ flow_with_config() {
 
   [ -z "$_boot_mount" ] && die "Missing 'mount' key under [boot] in config."
 
-  printf "\n%s>> Mounting partition: boot %s\n" "${BOLD}" "${RESET}"
+  printf "\n>> Mounting partition: boot\n"
   mkdir -p /mnt/boot
   mount "$_boot_mount" /mnt/boot ||
     die "Failed to mount $_boot_mount at /mnt/boot."
@@ -193,6 +186,10 @@ flow_with_config() {
 
 # -----------------------------------------------------------------------------
 # Interactive flow (no configuration file)
+#
+# NOTE: ask_device() uses a global variable REPLY_DEVICE instead of printing
+# to stdout, because calling it inside $(...) spawns a subshell which cannot
+# read from the terminal — causing read to hang silently.
 # -----------------------------------------------------------------------------
 ask_yn() {
   # Returns 0 for "y", 1 for "n"
@@ -200,33 +197,34 @@ ask_yn() {
     printf "%s [y/n]: " "$1"
     read -r _answer
     case "$_answer" in
-    y | Y) return 0 ;;
-    n | N) return 1 ;;
-    *) warn "Please answer with 'y' or 'n'." ;;
+      y | Y) return 0 ;;
+      n | N) return 1 ;;
+      *) warn "Please answer with 'y' or 'n'." ;;
     esac
   done
 }
 
 ask_device() {
   _prompt="$1"
-  _val=""
-  while [ -z "$_val" ]; do
+  REPLY_DEVICE=""
+  while [ -z "$REPLY_DEVICE" ]; do
     printf "%s\n> " "$_prompt"
-    read -r _val
-    if [ -z "$_val" ]; then
+    read -r REPLY_DEVICE
+    if [ -z "$REPLY_DEVICE" ]; then
       warn "Value cannot be empty."
     fi
   done
-  echo "$_val"
 }
 
 flow_interactive() {
   # --- ROOT ---
-  printf "\n%s=== ROOT Partition ===%s\n" "${BOLD}" "${RESET}"
-  _root_device=$(ask_device "Enter the root partition (e.g. /dev/sda2):")
+  printf "\n=== ROOT Partition ===\n"
+  ask_device "Enter the root partition (e.g. /dev/sda2):"
+  _root_device="$REPLY_DEVICE"
 
   if ask_yn "Is the root partition LUKS-encrypted?"; then
-    _root_luks_name=$(ask_device "Enter a name for the encrypted partition (e.g. linux-root):")
+    ask_device "Enter a name for the encrypted partition (e.g. linux-root):"
+    _root_luks_name="$REPLY_DEVICE"
     info "Opening LUKS partition..."
     cryptsetup open "$_root_device" "$_root_luks_name" ||
       die "Failed to open the LUKS partition."
@@ -242,11 +240,13 @@ flow_interactive() {
   success "$_root_final_device mounted at /mnt."
 
   # --- HOME ---
-  printf "\n%s=== HOME Partition ===%s\n" "${BOLD}" "${RESET}"
-  _home_device=$(ask_device "Enter the home partition (e.g. /dev/sdb1):")
+  printf "\n=== HOME Partition ===\n"
+  ask_device "Enter the home partition (e.g. /dev/sdb1):"
+  _home_device="$REPLY_DEVICE"
 
   if ask_yn "Is the home partition LUKS-encrypted?"; then
-    _home_luks_name=$(ask_device "Enter a name for the encrypted partition (e.g. home):")
+    ask_device "Enter a name for the encrypted partition (e.g. home):"
+    _home_luks_name="$REPLY_DEVICE"
     info "Opening LUKS partition..."
     cryptsetup open "$_home_device" "$_home_luks_name" ||
       die "Failed to open the LUKS partition for home."
@@ -262,8 +262,9 @@ flow_interactive() {
   success "$_home_final_device mounted at /mnt/home."
 
   # --- BOOT ---
-  printf "\n%s=== BOOT Partition ===%s\n" "${BOLD}" "${RESET}"
-  _boot_device=$(ask_device "Enter the boot partition (e.g. /dev/sda1):")
+  printf "\n=== BOOT Partition ===\n"
+  ask_device "Enter the boot partition (e.g. /dev/sda1):"
+  _boot_device="$REPLY_DEVICE"
 
   mkdir -p /mnt/boot
   mount "$_boot_device" /mnt/boot ||
@@ -275,7 +276,7 @@ flow_interactive() {
 # Enter the chroot environment
 # -----------------------------------------------------------------------------
 do_chroot() {
-  printf "\n%s${GREEN}=== Entering chroot ===%s\n" "${BOLD}" "${RESET}"
+  printf "\n=== Entering chroot ===\n"
   info "Running: arch-chroot /mnt"
   arch-chroot /mnt
   success "chroot session ended."
@@ -289,23 +290,23 @@ main() {
   check_root
   check_dependencies
 
-  printf "%sDo you have a configuration file (.conf)? %s [y/n]: " "${BOLD}" "${RESET}"
+  printf "Do you have a configuration file (.conf)? [y/n]: "
   read -r _has_config
 
   case "$_has_config" in
-  y | Y)
-    printf "Enter the URL of your configuration file:\n> "
-    read -r _config_url
-    [ -z "$_config_url" ] && die "URL cannot be empty."
-    _config_data=$(load_config_from_url "$_config_url")
-    flow_with_config "$_config_data"
-    ;;
-  n | N)
-    flow_interactive
-    ;;
-  *)
-    die "Invalid answer. Please run the script again and answer 'y' or 'n'."
-    ;;
+    y | Y)
+      printf "Enter the URL of your configuration file:\n> "
+      read -r _config_url
+      [ -z "$_config_url" ] && die "URL cannot be empty."
+      _config_data=$(load_config_from_url "$_config_url")
+      flow_with_config "$_config_data"
+      ;;
+    n | N)
+      flow_interactive
+      ;;
+    *)
+      die "Invalid answer. Please run the script again and answer 'y' or 'n'."
+      ;;
   esac
 
   do_chroot
